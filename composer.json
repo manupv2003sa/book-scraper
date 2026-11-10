@@ -1,0 +1,20 @@
+{
+    "name": "manupv/book-scraper",
+    "description": "PHP web scraping application",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Manu P V",
+            "email": "manupv2003@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "vlucas/phpdotenv": "^5.8"
+    }
+}
