@@ -18,7 +18,8 @@ class HttpClient
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_CONNECTTIMEOUT => 10,
-                CURLOPT_USERAGENT => 'BookScraper/1.0'
+                CURLOPT_USERAGENT => 'BookScraper/1.0',
+                CURLOPT_DNS_CACHE_TIMEOUT => 300,
             ]);
 
             $response = curl_exec($curl);
