@@ -2,3 +2,5 @@
 /.env
 /logs/*
 !/logs/.gitkeep
+/test-parser.php
+/query_check.php

@@ -1,10 +1,12 @@
 <?php
 namespace App\http;
+
+use App\Http\HttpResponse;
 use RuntimeException;
 
 class HttpClient
 {
-    public function get(string $url): string
+    public function get(string $url): HttpResponse
     {
         $curl = curl_init($url);
 
@@ -38,7 +40,8 @@ class HttpClient
                 );
             }
 
-            return $response;
+        
+            return new HttpResponse($statusCode, [], $response);
 
         } finally {
             curl_close($curl);

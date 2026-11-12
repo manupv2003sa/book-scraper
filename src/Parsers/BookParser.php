@@ -237,4 +237,33 @@ class BookParser
 
         return $bookDetails;
     }
+
+
+    public function getNextPageUrl(string $html): ?string{
+
+    $dom= new DOMDocument();
+      libxml_use_internal_errors(true);
+
+        $dom->loadHTML($html);
+
+        libxml_clear_errors();
+
+        $xpath = new DOMXPath($dom);
+
+         $nextNodes = $xpath->query(
+            "//li[contains(@class, 'next')]/a"
+        );
+
+          $next = null;
+
+            if ($nextNodes->length > 0) {
+                $nextNode = $nextNodes->item(0);
+
+                if ($nextNode instanceof \DOMElement) {
+                    $next = trim($nextNode->getAttribute("href"));
+                }
+            }
+
+return  $next;
+    }
 }
