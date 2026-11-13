@@ -4,7 +4,6 @@ namespace App\Parsers;
 
 use App\Models\BookSummary;
 use App\Models\BookDetails;
-use Dom\XPath;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
@@ -14,19 +13,38 @@ class BookParser
 {
     public function parseListing(string $html): array
     {
+
+         if (trim($html) === '') {
+            throw new \RuntimeException(
+                "Product HTML is empty."
+            );
+        }
+
         $dom = new DOMDocument();
 
         libxml_use_internal_errors(true);
 
-        $dom->loadHTML($html);
+        $loaded = $dom->loadHTML($html);
 
         libxml_clear_errors();
+
+        if (!$loaded) {
+            throw new \RuntimeException(
+                "Failed to parse product HTML."
+            );
+        }
 
         $xpath = new DOMXPath($dom);
 
         $books = $xpath->query(
             "//article[contains(@class, 'product_pod')]"
         );
+
+        if ($books === false || $books->length === 0) {
+            throw new \RuntimeException(
+                "No books found in catalogue HTML."
+            );
+        }
 
         $parsedBooks = [];
 
@@ -131,7 +149,7 @@ class BookParser
 
                 $imageUrl = trim($imageNode->getAttribute('src'));
             }
-            $parsedBooks[]= new BookSummary(
+            $parsedBooks[] = new BookSummary(
                 title: $title,
                 price: $price,
                 availability: $availability,
@@ -170,16 +188,37 @@ class BookParser
 
     public function parseDetails(string $html): BookDetails
     {
+
+        if (trim($html) === '') {
+            throw new \RuntimeException(
+                "Product HTML is empty."
+            );
+        }
+
         $dom = new DOMDocument();
 
         libxml_use_internal_errors(true);
-        $dom->loadHTML($html);
+
+        $loaded = $dom->loadHTML($html);
+
         libxml_clear_errors();
+
+        if (!$loaded) {
+            throw new \RuntimeException(
+                "Failed to parse product HTML."
+            );
+        }
 
         $xpath = new DOMXPath($dom);
 
 
         $upc = $this->extractTableValue($xpath, 'UPC');
+
+        if ($upc === null || trim($upc) === '') {
+            throw new \RuntimeException(
+                "Book UPC is missing from product details."
+            );
+        }
 
 
         $productType = $this->extractTableValue($xpath, 'Product Type');
@@ -239,31 +278,30 @@ class BookParser
     }
 
 
-    public function getNextPageUrl(string $html): ?string{
+    public function getNextPageUrl(string $html): ?string
+    {
+        $dom = new DOMDocument();
 
-    $dom= new DOMDocument();
-      libxml_use_internal_errors(true);
-
+        libxml_use_internal_errors(true);
         $dom->loadHTML($html);
-
         libxml_clear_errors();
 
         $xpath = new DOMXPath($dom);
 
-         $nextNodes = $xpath->query(
+        $nextNodes = $xpath->query(
             "//li[contains(@class, 'next')]/a"
         );
 
-          $next = null;
+        $next = null;
 
-            if ($nextNodes->length > 0) {
-                $nextNode = $nextNodes->item(0);
+        if ($nextNodes->length > 0) {
+            $nextNode = $nextNodes->item(0);
 
-                if ($nextNode instanceof \DOMElement) {
-                    $next = trim($nextNode->getAttribute("href"));
-                }
+            if ($nextNode instanceof \DOMElement) {
+                $next = trim($nextNode->getAttribute('href'));
             }
+        }
 
-return  $next;
+        return $next;
     }
 }

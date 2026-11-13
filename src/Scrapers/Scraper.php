@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Scrapers;
 
 use App\Http\HttpClient;
@@ -13,6 +14,13 @@ class Scraper
     private BookParser $bookParser;
     private UrlResolver $urlResolver;
     private CategoryRepository $categoryRepository;
+
+
+    private int $totalProcessed = 0;
+    private int $successful = 0;
+    private int $failed = 0;
+    private array $errors = [];
+    private int $pagesProcessed = 0;
 
     public function __construct(
         HttpClient $httpClient,
@@ -34,14 +42,19 @@ class Scraper
             );
         }
 
+        $this->totalProcessed = 0;
+        $this->successful = 0;
+        $this->failed = 0;
+        $this->errors = [];
+        $this->pagesProcessed = 0;
+
         $allBooks = [];
         $currentUrl = 'https://books.toscrape.com/';
-        $pagesProcessed = 0;
 
         // Catalogue pagination
         while (
             $currentUrl !== null &&
-            $pagesProcessed < $maxPages
+            $this->pagesProcessed < $maxPages
         ) {
 
             // 1. Fetch catalogue page
@@ -53,97 +66,120 @@ class Scraper
             // 3. Parse catalogue books
             $books = $this->bookParser->parseListing($html);
 
+            $this->pagesProcessed++;
+
             // 4. Process each individual book
             foreach ($books as $book) {
+                
+                $this->totalProcessed++;
 
-                // Resolve product URL
-                $productUrl = $book->productUrl !== null
-                    ? $this->urlResolver->resolve(
-                        $book->productUrl,
-                        $currentUrl
-                    )
-                    : null;
+                try{
 
-                if ($productUrl === null || $productUrl === '') {
-                    continue;
-                }
+                    // Resolve product URL
+                    $productUrl = $book->productUrl !== null
+                        ? $this->urlResolver->resolve(
+                            $book->productUrl,
+                            $currentUrl
+                        )
+                        : null;
 
-                // Fetch individual product page
-                $detailResponse = $this->httpClient->get($productUrl);
+                    if ($productUrl === null || $productUrl === '') {
+                        throw new \RuntimeException("Product URL is missing.");
+                    }
 
-                $detailHtml = $detailResponse->getBody();
 
-                // Parse individual product details
-                $bookDetails = $this->bookParser->parseDetails($detailHtml);
 
-                // Find or create category
-                $categoryId = null;
+                    // Fetch individual product page
+                    $detailResponse = $this->httpClient->get($productUrl);
 
-                if ($bookDetails->category !== null) {
-                    $categoryId = $this->categoryRepository->findOrCreate(
-                        $bookDetails->category
+                    $detailHtml = $detailResponse->getBody();
+
+                    // Parse individual product details
+                    $bookDetails = $this->bookParser->parseDetails($detailHtml);
+
+              
+
+                    // Resolve image URL
+                    $imageUrl = $book->imageUrl !== null
+                        ? $this->urlResolver->resolve(
+                            $book->imageUrl,
+                            $currentUrl
+                        )
+                        : null;
+
+                    // Normalize monetary values
+                    $price = $book->price !== null
+                        ? preg_replace('/[^\d.]/', '', $book->price)
+                        : null;
+
+                    $priceExclTax = $bookDetails->priceExclTax !== null
+                        ? preg_replace('/[^\d.]/', '', $bookDetails->priceExclTax)
+                        : null;
+
+                    $priceInclTax = $bookDetails->priceInclTax !== null
+                        ? preg_replace('/[^\d.]/', '', $bookDetails->priceInclTax)
+                        : null;
+
+                    $tax = $bookDetails->tax !== null
+                        ? preg_replace('/[^\d.]/', '', $bookDetails->tax)
+                        : null;
+
+                    // Validate required fields
+                   if (
+                        $bookDetails->upc === null ||
+                        trim($bookDetails->upc) === '' ||
+                        trim($book->title) === '' ||
+                        $price === null ||
+                        $price === '' ||
+                        !is_numeric($price) ||(float) $price <= 0 || 
+                        $productUrl === ''
+                    ) {
+                        throw new \RuntimeException(
+                            "Required book information is missing or invalid."
+                        );
+                    }
+
+                    $categoryId = null;
+
+                    if ($bookDetails->category !== null) {
+                        $categoryId = $this->categoryRepository->findOrCreate(
+                            $bookDetails->category
+                        );
+                    }
+                    // Create complete Book object
+                    $completeBook = new Book(
+                        upc: $bookDetails->upc,
+                        title: $book->title,
+                        price: $price,
+                        productUrl: $productUrl,
+                        availability: $bookDetails->availability,
+                        rating: $book->rating,
+                        imageUrl: $imageUrl,
+                        productType: $bookDetails->productType,
+                        priceExclTax: $priceExclTax,
+                        priceInclTax: $priceInclTax,
+                        tax: $tax,
+                        numReviews: $bookDetails->numReviews,
+                        description: $bookDetails->description,
+                        categoryId: $categoryId
                     );
-                }
 
-                // Resolve image URL
-                $imageUrl = $book->imageUrl !== null
-                    ? $this->urlResolver->resolve(
-                        $book->imageUrl,
-                        $currentUrl
-                    )
-                    : null;
-
-                // Normalize monetary values
-                $price = $book->price !== null
-                    ? preg_replace('/[^\d.]/', '', $book->price)
-                    : null;
-
-                $priceExclTax = $bookDetails->priceExclTax !== null
-                    ? preg_replace('/[^\d.]/', '', $bookDetails->priceExclTax)
-                    : null;
-
-                $priceInclTax = $bookDetails->priceInclTax !== null
-                    ? preg_replace('/[^\d.]/', '', $bookDetails->priceInclTax)
-                    : null;
-
-                $tax = $bookDetails->tax !== null
-                    ? preg_replace('/[^\d.]/', '', $bookDetails->tax)
-                    : null;
-
-                // Validate required fields
-                if (
-                    $bookDetails->upc === null ||
-                    $book->title === '' ||
-                    $price === null ||
-                    $productUrl === ''
-                ) {
+                    // Collect complete Book object
+                    $allBooks[] = $completeBook;
+                    $this->successful++;
+                }catch(\RuntimeException $e)
+                {
+                    $this->failed++;
+                    $this->errors[] = [
+                        'title' => $book->title,
+                        'message' => $e->getMessage(),
+                    ];
                     continue;
+
                 }
-
-                // Create complete Book object
-                $completeBook = new Book(
-                    upc: $bookDetails->upc,
-                    title: $book->title,
-                    price: $price,
-                    productUrl: $productUrl,
-                    availability: $bookDetails->availability,
-                    rating: $book->rating,
-                    imageUrl: $imageUrl,
-                    productType: $bookDetails->productType,
-                    priceExclTax: $priceExclTax,
-                    priceInclTax: $priceInclTax,
-                    tax: $tax,
-                    numReviews: $bookDetails->numReviews,
-                    description: $bookDetails->description,
-                    categoryId: $categoryId
-                );
-
-                // Collect complete Book object
-                $allBooks[] = $completeBook;
             }
 
-            // 5. Increment processed page count
-            $pagesProcessed++;
+   
 
             // 6. Extract next-page relative URL
             $nextPageUrl = $this->bookParser->getNextPageUrl($html);
@@ -158,5 +194,17 @@ class Scraper
         }
 
         return $allBooks;
+    }
+
+
+    public function getStats(): array
+    {
+        return [
+            'totalProcessed' => $this->totalProcessed,
+            'successful' => $this->successful,
+            'failed' => $this->failed,
+            'errors' => $this->errors,
+            'pagesProcessed' =>$this->pagesProcessed ,
+        ];
     }
 }

@@ -1,7 +1,7 @@
 <?php
-namespace App\http;
 
-use App\Http\HttpResponse;
+namespace App\Http;
+
 use RuntimeException;
 
 class HttpClient
@@ -15,7 +15,7 @@ class HttpClient
         }
 
         try {
-            curl_setopt_array($curl, [
+            $optionsSet = curl_setopt_array($curl, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_TIMEOUT => 30,
@@ -23,6 +23,12 @@ class HttpClient
                 CURLOPT_USERAGENT => 'BookScraper/1.0',
                 CURLOPT_DNS_CACHE_TIMEOUT => 300,
             ]);
+
+            if ($optionsSet === false) {
+                throw new RuntimeException(
+                    "Failed to configure cURL options."
+                );
+            }
 
             $response = curl_exec($curl);
 
@@ -40,7 +46,6 @@ class HttpClient
                 );
             }
 
-        
             return new HttpResponse($statusCode, [], $response);
 
         } finally {
