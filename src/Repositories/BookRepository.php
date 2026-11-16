@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Book;
 
+use InvalidArgumentException;
 use PDO;
 
 class BookRepository
@@ -208,5 +209,41 @@ class BookRepository
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function findPaginated(int $limit, int $offset): array{
+
+       if ($limit <= 0 || $offset < 0) {
+            throw new InvalidArgumentException("Invalid pagination values.");
+        }
+
+        $stmt=$this->pdo->prepare(
+              "SELECT
+                    books.*,
+                    categories.name AS category_name
+                FROM books
+                LEFT JOIN categories
+                    ON books.category_id = categories.id
+                ORDER BY books.id DESC
+                LIMIT :limit OFFSET :offset"
+        );
+
+        $stmt->bindValue(':limit',$limit,PDO::PARAM_INT);
+        $stmt->bindValue(':offset',$offset, PDO :: PARAM_INT);
+
+     
+        $stmt->execute();
+
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);    }
+
+    public function countAll():int{
+        $stmt=$this->pdo->prepare(
+            "SELECT COUNT(*) FROM books");
+
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
+
+        
     }
 }

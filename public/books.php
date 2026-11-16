@@ -1,9 +1,12 @@
+
 <?php
-require_once __DIR__ . '../../bootstrap.php';
+
+require_once __DIR__ . '/../bootstrap.php';
+
 use App\Repositories\BookRepository;
 use App\Database\DatabaseConnection;
 
-$db= new DatabaseConnection(
+$db = new DatabaseConnection(
     $_ENV['DB_HOST'],
     $_ENV['DB_PORT'],
     $_ENV['DB_DATABASE'],
@@ -13,9 +16,42 @@ $db= new DatabaseConnection(
 
 $pdo = $db->getConnection();
 
-
 $repository = new BookRepository($pdo);
-$books=$repository->findAll();
+
+// Pagination configuration
+$limit = 20;
+
+// Get and validate requested page
+$reqPage = filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT);
+
+if ($reqPage === false || $reqPage === null || $reqPage < 1) {
+    $reqPage = 1;
+}
+
+// Get total number of books
+$countAll = $repository->countAll();
+
+// Calculate total pages
+$totalPages = (int) ceil($countAll / $limit);
+
+// Handle empty database
+if ($totalPages === 0) {
+    $paginatedContent = [];
+} else {
+
+    // Redirect if requested page exceeds available pages
+    if ($reqPage > $totalPages) {
+        header("Location: books.php?page=" . $totalPages);
+        exit;
+    }
+
+    // Calculate offset
+    $offset = ($reqPage - 1) * $limit;
+
+    // Fetch current page books
+    $paginatedContent = $repository->findPaginated($limit, $offset);
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -27,7 +63,6 @@ $books=$repository->findAll();
 
     <title>Book Management</title>
 
-    <!-- Bootstrap CSS -->
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet"
@@ -43,10 +78,6 @@ $books=$repository->findAll();
 
         <div class="card shadow-sm">
             <div class="card-body">
-
-                <h5 class="mb-3">
-                    Scraped Books (<?= count($books) ?>)
-                </h5>
 
                 <div class="table-responsive">
 
@@ -66,22 +97,23 @@ $books=$repository->findAll();
 
                         <tbody>
 
-                            <?php if (empty($books)): ?>
+                            <?php if (empty($paginatedContent)): ?>
 
                                 <tr>
-                                    <td colspan="6" class="text-center">
+                                    <td colspan="7" class="text-center">
                                         No books found.
                                     </td>
                                 </tr>
 
                             <?php else: ?>
 
-                                <?php foreach ($books as $index => $book): ?>
+                                <?php foreach ($paginatedContent as $index => $book): ?>
 
                                     <tr>
                                         <td>
-                                            <?= $index+1; ?>
+                                            <?= $offset + $index + 1 ?>
                                         </td>
+
                                         <td>
                                             <?= htmlspecialchars($book['title']) ?>
                                         </td>
@@ -121,6 +153,51 @@ $books=$repository->findAll();
                     </table>
 
                 </div>
+
+                <!-- Pagination -->
+                <?php if ($totalPages > 1): ?>
+
+                    <nav aria-label="Book pagination">
+
+                        <ul class="pagination justify-content-center">
+
+                            <li class="page-item <?= $reqPage <= 1 ? 'disabled' : '' ?>">
+                                <a
+                                    class="page-link"
+                                    href="?page=<?= $reqPage - 1 ?>"
+                                >
+                                    Previous
+                                </a>
+                            </li>
+
+                            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+
+                                <li class="page-item <?= $reqPage === $i ? 'active' : '' ?>">
+                                    <a
+                                        class="page-link"
+                                        href="?page=<?= $i ?>"
+                                    >
+                                        <?= $i ?>
+                                    </a>
+                                </li>
+
+                            <?php endfor; ?>
+
+                            <li class="page-item <?= $reqPage >= $totalPages ? 'disabled' : '' ?>">
+                                <a
+                                    class="page-link"
+                                    href="?page=<?= $reqPage + 1 ?>"
+                                >
+                                    Next
+                                </a>
+                            </li>
+
+                        </ul>
+
+                    </nav>
+
+                <?php endif; ?>
+
             </div>
         </div>
 
@@ -128,5 +205,3 @@ $books=$repository->findAll();
 
 </body>
 </html>
-
-
