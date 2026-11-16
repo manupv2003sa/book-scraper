@@ -7,6 +7,7 @@ use App\Parsers\BookParser;
 use App\Support\UrlResolver;
 use App\Repositories\CategoryRepository;
 use App\Models\Book;
+use Closure;
 
 class Scraper
 {
@@ -21,6 +22,8 @@ class Scraper
     private int $failed = 0;
     private array $errors = [];
     private int $pagesProcessed = 0;
+
+    private ?Closure $progressCallback = null;
 
     public function __construct(
         HttpClient $httpClient,
@@ -177,6 +180,7 @@ class Scraper
                     continue;
 
                 }
+                $this->publishProgress();
             }
 
    
@@ -194,6 +198,17 @@ class Scraper
         }
 
         return $allBooks;
+    }
+
+    public  function setProgressCallback(Closure $callback): void{
+        $this->progressCallback=$callback;
+    }
+
+    private function publishProgress(): void
+    {
+        if ($this->progressCallback !== null) {
+            ($this->progressCallback)($this->getStats());
+        }
     }
 
 

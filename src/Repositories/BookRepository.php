@@ -29,6 +29,28 @@ class BookRepository
     }
 
 
+    public function findById(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT
+                books.*,
+                categories.name AS category_name
+            FROM books
+            LEFT JOIN categories
+            ON books.category_id = categories.id
+             WHERE books.id = :id;"
+        );
+
+        $stmt->execute([
+            "id"=>$id,
+        ]);
+
+         $book = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $book ?: null;
+
+    }
+
+
     public function update(Book $book): bool
     {
         $stmt = $this->pdo->prepare(
@@ -168,5 +190,23 @@ class BookRepository
 
         $this->update($book);
         return 'updated';
+    }
+
+
+    public function findAll(): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT
+            books.*,
+            categories.name AS category_name
+        FROM books
+        LEFT JOIN categories
+            ON books.category_id = categories.id
+        ORDER BY books.id DESC"
+        );
+
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

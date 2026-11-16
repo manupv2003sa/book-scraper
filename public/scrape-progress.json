@@ -1,0 +1,13 @@
+{
+    "status": "completed",
+    "totalBooksExpected": 20,
+    "totalProcessed": 20,
+    "successful": 20,
+    "failed": 0,
+    "pagesProcessed": 1,
+    "inserted": 0,
+    "updated": 0,
+    "unchanged": 20,
+    "saveFailed": 0,
+    "errors": []
+}
