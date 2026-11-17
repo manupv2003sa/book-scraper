@@ -12,6 +12,10 @@ class BookRepository
 
     private PDO $pdo;
 
+    private const FILTER_ALL = 'all';
+    private const FILTER_SEARCH = 'search';
+    private const FILTER_CATEGORY = 'category';
+
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
@@ -43,12 +47,11 @@ class BookRepository
         );
 
         $stmt->execute([
-            "id"=>$id,
+            "id" => $id,
         ]);
 
-         $book = $stmt->fetch(PDO::FETCH_ASSOC);
+        $book = $stmt->fetch(PDO::FETCH_ASSOC);
         return $book ?: null;
-
     }
 
 
@@ -211,39 +214,130 @@ class BookRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function findPaginated(int $limit, int $offset): array{
 
-       if ($limit <= 0 || $offset < 0) {
+    public function findBooks(
+        string $filterType,
+        mixed $filterValue,
+        int $limit,
+        int $offset
+    ): array {
+        if ($limit <= 0 || $offset < 0) {
             throw new InvalidArgumentException("Invalid pagination values.");
         }
 
-        $stmt=$this->pdo->prepare(
-              "SELECT
-                    books.*,
-                    categories.name AS category_name
-                FROM books
-                LEFT JOIN categories
-                    ON books.category_id = categories.id
-                ORDER BY books.id DESC
-                LIMIT :limit OFFSET :offset"
-        );
+        if ($filterType === self::FILTER_SEARCH && !is_string($filterValue)) {
+            throw new InvalidArgumentException("Search filter must be a string.");
+        }
 
-        $stmt->bindValue(':limit',$limit,PDO::PARAM_INT);
-        $stmt->bindValue(':offset',$offset, PDO :: PARAM_INT);
+        if ($filterType === self::FILTER_CATEGORY) {
+            if (!is_array($filterValue) || empty($filterValue)) {
+                throw new InvalidArgumentException("Category IDs must be a non-empty array.");
+            }
 
-     
+            foreach ($filterValue as $id) {
+                if (!is_int($id) || $id <= 0) {
+                    throw new InvalidArgumentException("Invalid category ID.");
+                }
+            }
+        }
+
+        if ($filterType === self::FILTER_ALL && $filterValue !== null) {
+            throw new InvalidArgumentException("All filter must have a null value.");
+        }
+
+        $query =
+            "SELECT
+                books.*,
+                categories.name AS category_name
+            FROM books
+            LEFT JOIN categories
+                ON books.category_id = categories.id";
+
+        $params = [];
+
+        if ($filterType === self::FILTER_SEARCH) {
+            $query .= " WHERE books.title LIKE :search";
+            $params[':search'] = '%' . $filterValue . '%';
+        } elseif ($filterType === self::FILTER_CATEGORY) {
+
+            $placeholders = [];
+
+            foreach ($filterValue as $index => $id) {
+                $placeholder = ':category' . $index;
+
+                $placeholders[] = $placeholder;
+                $params[$placeholder] = $id;
+            }
+
+            $placeholderList = implode(', ', $placeholders);
+
+            $query .= " WHERE books.category_id IN ($placeholderList)";
+        } elseif ($filterType === self::FILTER_ALL) {
+        } else {
+            throw new InvalidArgumentException("Invalid filter type.");
+        }
+
+        if ($filterType === self::FILTER_CATEGORY) {
+            $query .= " ORDER BY categories.name ASC, books.title ASC";
+        } else {
+            $query .= " ORDER BY books.id DESC";
+        }
+
+        $query .= " LIMIT :limit OFFSET :offset";
+
+        $stmt = $this->pdo->prepare($query);
+
+        foreach ($params as $key => $value) {
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+
+            $stmt->bindValue($key, $value, $type);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
         $stmt->execute();
 
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);    }
 
-    public function countAll():int{
-        $stmt=$this->pdo->prepare(
-            "SELECT COUNT(*) FROM books");
+
+    public function countBooks(string $filterType, mixed $filterValue): int
+    {
+        $query = "SELECT COUNT(*) FROM books";
+        $params = [];
+
+        if ($filterType === self::FILTER_SEARCH) {
+
+            $query .= " WHERE title LIKE :search";
+
+            $params[':search'] = '%' . $filterValue . '%';
+        } elseif ($filterType === self::FILTER_CATEGORY) {
+
+            $placeholders = [];
+
+            foreach ($filterValue as $index => $id) {
+
+                $placeholder = ':category' . $index;
+
+                $placeholders[] = $placeholder;
+                $params[$placeholder] = $id;
+            }
+
+            $placeholderList = implode(', ', $placeholders);
+
+            $query .= " WHERE category_id IN ($placeholderList)";
+        }
+        $stmt = $this->pdo->prepare($query);
+
+        foreach ($params as $key => $value) {
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+
+            $stmt->bindValue($key, $value, $type);
+        }
 
         $stmt->execute();
+
         return (int) $stmt->fetchColumn();
-
-        
     }
 }

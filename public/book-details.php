@@ -28,6 +28,12 @@ if (!$book) {
     http_response_code(404);
     die('Book not found');
 }
+
+
+$pageTitle = 'All Books';
+
+ob_start();
+
 ?>
 
 <!DOCTYPE html>
@@ -156,3 +162,11 @@ if (!$book) {
 
 </body>
 </html>
+
+<?php
+
+$content = ob_get_clean();
+
+require_once __DIR__ . '/templates/baseLayout.php';
+
+?>

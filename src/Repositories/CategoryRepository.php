@@ -56,4 +56,13 @@ class CategoryRepository
 
         return $this->create($name);
     }
+
+    public function findAll(): array
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM categories");
+        
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

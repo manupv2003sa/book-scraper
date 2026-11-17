@@ -3,7 +3,6 @@
 
 use App\Database\DatabaseConnection;
 use App\Repositories\BookRepository;
-use App\Scrapers\Scraper;
 
 require_once __DIR__ . '/../bootstrap.php';
 
@@ -26,70 +25,42 @@ $books = $bookRepository->findAll();
 
 $totalBooks = count($books);
 
+// Page title
+$pageTitle = 'Dashboard';
+
+ob_start();
+
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
+<div class="container py-5">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <div class="row g-4 align-items-start">
 
-    <title>Book Scraper Dashboard</title>
+        <!-- Left Column: Dashboard and Database Overview -->
+        <div class="col-lg-4">
 
-    <!-- Bootstrap CSS -->
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-</head>
+            <!-- Dashboard Heading -->
+            <div class="mb-4">
+                <h2 class="fw-bold">Dashboard</h2>
+                <p class="text-muted">
+                    Manage your book scraping activities and database.
+                </p>
+            </div>
 
-<body class="bg-light">
+            <!-- Total Books Card -->
+            <div class="card shadow-sm border-0" style="min-height: 235px;">
+                <div class="card-body p-4" style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
 
-    <!-- Navigation -->
-    <nav class="navbar navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="index.php">
-                Book Scraper
-            </a>
+                    <h6 class="text-muted">Total Books Stored</h6>
 
-            <a href="books.php" class="btn btn-outline-light btn-sm">
-                View All Books
-            </a>
-        </div>
-    </nav>
+                    <h2 class="fw-bold">
+                        <?= $totalBooks ?>
+                    </h2>
 
+                    <p class="text-muted mb-0">
+                        Books available in database
+                    </p>
 
-    <div class="container mt-5">
-
-        <!-- Dashboard Heading -->
-        <div class="mb-4">
-            <h2>Dashboard</h2>
-            <p class="text-muted">
-                Manage your book scraping activities.
-            </p>
-        </div>
-
-
-        <!-- Database Overview -->
-        <div class="row mb-4">
-
-            <div class="col-md-4">
-
-                <div class="card shadow-sm">
-                    <div class="card-body">
-
-                        <h6 class="text-muted">Total Books Stored</h6>
-
-                        <h2 class="fw-bold">
-                            <?= $totalBooks ?>
-                        </h2>
-
-                        <p class="text-muted mb-0">
-                            Books available in database
-                        </p>
-
-                    </div>
                 </div>
 
             </div>
@@ -97,175 +68,217 @@ $totalBooks = count($books);
         </div>
 
 
-        <!-- Scraping Form -->
-        <div class="row">
+        <!-- Right Column: Scraping Section -->
+        <div class="col-lg-8">
 
-            <div class="col-md-7">
+            <div class="card shadow-sm border-0">
 
-                <div class="card shadow-sm">
+                <div class="card-body p-4">
 
-                    <div class="card-body">
+                    <h4 class="mb-3" style="padding: 20px;">
+                        Start Scraping
+                    </h4>
 
-                        <h4 class="mb-3">Start Scraping</h4>
+                    <p class="text-muted">
+                        Select the number of catalogue pages you want to scrape.
+                    </p>
 
-                        <form action="scrape.php" method="POST" id="scrapeForm">
+                    <form action="scrape.php" method="POST" id="scrapeForm">
 
-                            <!-- Number of Pages -->
-                            <div class="mb-3">
+                        <!-- Number of Pages -->
+                        <div class="mb-3">
 
-                                <label for="pages" class="form-label">
-                                    Number of pages (20 books each)
-                                </label>
+                            <label for="pages" class="form-label">
+                                Number of pages (20 books each)
+                            </label>
 
-                                <input
-                                    type="number"
-                                    class="form-control"
-                                    id="pages"
-                                    name="pages"
-                                    min="1"
-                                    value="5"
-                                    required
-                                >
-
-                                <div class="form-text">
-                                    Expected books:
-                                    <span id="expectedBooks">100</span>
-                                </div>
-
-                            </div>
-
-
-                            <!-- Scrape All Checkbox -->
-                            <div class="form-check mb-4">
-
-                                <input
-                                    type="checkbox"
-                                    class="form-check-input"
-                                    id="scrape_all"
-                                    name="scrape_all"
-                                    value="1"
-                                >
-
-                                <label
-                                    class="form-check-label"
-                                    for="scrape_all"
-                                >
-                                    Scrape all available pages
-                                </label>
-
-                            </div>
-
-
-                            <!-- Submit Button -->
-                            <button
-                                type="submit"
-                                class="btn btn-primary w-100"
-                                id="startButton"
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="pages"
+                                name="pages"
+                                min="1"
+                                value="5"
+                                required
                             >
-                                Start Scraping
-                            </button>
 
-                        </form>
-
-                                            <!-- Scraping Progress -->
-                        <div id="progressSection" class="mt-4 d-none">
-
-                            <h6 id="progressStatus">Scraping in progress...</h6>
-
-                            <div class="progress mb-2" role="progressbar">
-
-                                <div
-                                    id="progressBar"
-                                    class="progress-bar progress-bar-striped progress-bar-animated"
-                                    style="width: 0%"
-                                >
-                                    0%
-                                </div>
-
+                            <div class="form-text">
+                                Expected books:
+                                <strong id="expectedBooks">100</strong>
                             </div>
-
-                            <p id="progressText" class="text-muted mb-0">
-                                Waiting to start...
-                            </p>
 
                         </div>
 
 
+                        <!-- Scrape All Checkbox -->
+                        <div class="form-check mb-4">
+
+                            <input
+                                type="checkbox"
+                                class="form-check-input"
+                                id="scrape_all"
+                                name="scrape_all"
+                                value="1"
+                            >
+
+                            <label
+                                class="form-check-label"
+                                for="scrape_all"
+                            >
+                                Scrape all available pages
+                            </label>
+
+                        </div>
+
+
+                        <!-- Submit Button -->
+                        <button
+                            type="submit"
+                            class="btn btn-primary w-100"
+                            id="startButton"
+                        >
+                            Start Scraping
+                        </button>
+
+                    </form>
+
+
+                    <!-- Scraping Progress -->
+                    <div id="progressSection" class="mt-4 d-none">
+
+                        <h6 id="progressStatus">
+                            Scraping in progress...
+                        </h6>
+
+                        <div class="progress mb-2" role="progressbar">
+
+                            <div
+                                id="progressBar"
+                                class="progress-bar progress-bar-striped progress-bar-animated"
+                                style="width: 0%"
+                            >
+                                0%
+                            </div>
+
+                        </div>
+
+                        <p id="progressText" class="text-muted mb-0">
+                            Waiting to start...
+                        </p>
+
                     </div>
 
                 </div>
 
             </div>
 
-
-            <!-- Scraping Report -->
-<div id="scrapingReport" class="card shadow-sm mt-4 d-none">
-
-    <div class="card-body">
-
-        <h5 class="mb-3">Scraping Report</h5>
-
-        <div class="row g-3">
-
-            <div class="col-md-3">
-                <h6>Expected Books</h6>
-                <h4 id="reportExpected">0</h4>
-            </div>
-
-            <div class="col-md-3">
-                <h6>Pages Processed</h6>
-                <h4 id="reportPages">0</h4>
-            </div>
-
-            <div class="col-md-3">
-                <h6>Successfully Scraped</h6>
-                <h4 class="text-success" id="reportSuccessful">0</h4>
-            </div>
-
-            <div class="col-md-3">
-                <h6>Failed</h6>
-                <h4 class="text-danger" id="reportFailed">0</h4>
-            </div>
-
-        </div>
-
-        <hr>
-
-        <h6>Database Saving Report</h6>
-
-        <p>Inserted: <span id="reportInserted">0</span></p>
-        <p>Updated: <span id="reportUpdated">0</span></p>
-        <p>Unchanged: <span id="reportUnchanged">0</span></p>
-        <p>Save Failed: <span id="reportSaveFailed">0</span></p>
-
-        <hr>
-
-        <h6>Scraping Errors</h6>
-
-        <div id="reportErrors">
-            No errors.
         </div>
 
     </div>
 
 </div>
 
-        <!-- View Books -->
-        <div class="card shadow-sm mt-4">
 
-            <div class="card-body d-flex justify-content-between align-items-center">
 
-                <div>
-                    <h5>Book Management</h5>
+    <!-- Scraping Report -->
+    <div class="row">
 
-                    <p class="text-muted mb-0">
-                        Browse and manage all books stored in your database.
-                    </p>
+        <div class="col-12">
+
+            <div id="scrapingReport" class="card shadow-sm border-0 mt-4 d-none">
+
+                <div class="card-body p-4" style="flex-direction: column; justify-content: center; align-items: center;">
+
+                    <h5 class="mb-4">Scraping Report</h5>
+
+
+                    <!-- Scraping Statistics -->
+                    <div class="row g-3">
+
+                        <div class="col-md-3">
+
+                            <h6 class="text-muted">Expected Books</h6>
+
+                            <h4 id="reportExpected">0</h4>
+
+                        </div>
+
+
+                        <div class="col-md-3">
+
+                            <h6 class="text-muted">Pages Processed</h6>
+
+                            <h4 id="reportPages">0</h4>
+
+                        </div>
+
+
+                        <div class="col-md-3">
+
+                            <h6 class="text-muted">Successfully Scraped</h6>
+
+                            <h4 class="text-success" id="reportSuccessful">
+                                0
+                            </h4>
+
+                        </div>
+
+
+                        <div class="col-md-3">
+
+                            <h6 class="text-muted">Failed</h6>
+
+                            <h4 class="text-danger" id="reportFailed">
+                                0
+                            </h4>
+
+                        </div>
+
+                    </div>
+
+
+                    <hr class="my-4">
+
+
+                    <!-- Database Saving Report -->
+                    <h6 class="mb-3">Database Saving Report</h6>
+
+                    <div class="row g-3">
+
+                        <div class="col-md-3">
+                            <p class="mb-1 text-muted">Inserted</p>
+                            <h5 id="reportInserted">0</h5>
+                        </div>
+
+                        <div class="col-md-3">
+                            <p class="mb-1 text-muted">Updated</p>
+                            <h5 id="reportUpdated">0</h5>
+                        </div>
+
+                        <div class="col-md-3">
+                            <p class="mb-1 text-muted">Unchanged</p>
+                            <h5 id="reportUnchanged">0</h5>
+                        </div>
+
+                        <div class="col-md-3">
+                            <p class="mb-1 text-muted">Save Failed</p>
+                            <h5 class="text-danger" id="reportSaveFailed">0</h5>
+                        </div>
+
+                    </div>
+
+
+                    <hr class="my-4">
+
+
+                    <!-- Scraping Errors -->
+                    <h6 class="mb-3">Scraping Errors</h6>
+
+                    <div id="reportErrors">
+                        No errors.
+                    </div>
+
                 </div>
-
-                <a href="books.php" class="btn btn-outline-primary">
-                    View Books
-                </a>
 
             </div>
 
@@ -273,234 +286,257 @@ $totalBooks = count($books);
 
     </div>
 
-
-    <!-- Bootstrap JavaScript -->
-    <script
-        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
-    </script>
+</div>
 
 
-    <!-- Page Count Calculation -->
-    <script>
+<!-- Page JavaScript -->
+<script>
 
-        const pagesInput = document.getElementById('pages');
-        const scrapeAllCheckbox = document.getElementById('scrape_all');
-        const expectedBooks = document.getElementById('expectedBooks');
+    const pagesInput = document.getElementById('pages');
+    const scrapeAllCheckbox = document.getElementById('scrape_all');
+    const expectedBooks = document.getElementById('expectedBooks');
+
+    const scrapeForm = document.getElementById('scrapeForm');
+    const startButton = document.getElementById('startButton');
+
+    const progressSection = document.getElementById('progressSection');
+    const progressText = document.getElementById('progressText');
+    const progressBar = document.getElementById('progressBar');
+    const progressStatus = document.getElementById('progressStatus');
+
+    const scrapingReport = document.getElementById('scrapingReport');
+
+    const reportExpected = document.getElementById('reportExpected');
+    const reportPages = document.getElementById('reportPages');
+    const reportSuccessful = document.getElementById('reportSuccessful');
+    const reportFailed = document.getElementById('reportFailed');
+
+    const reportInserted = document.getElementById('reportInserted');
+    const reportUpdated = document.getElementById('reportUpdated');
+    const reportUnchanged = document.getElementById('reportUnchanged');
+    const reportSaveFailed = document.getElementById('reportSaveFailed');
+
+    const reportErrors = document.getElementById('reportErrors');
+
+    let pollingInterval = null;
 
 
-        const scrapeForm=document.getElementById('scrapeForm');
-        const startButton=document.getElementById('startButton');
-        const progressSection= document.getElementById('progressSection');
-        const progressText= document.getElementById('progressText');
-        const progressBar= document.getElementById('progressBar');
-        const progressStatus= document.getElementById('progressStatus');
+    // Start scraping
+    scrapeForm.addEventListener('submit', function(event) {
 
+        event.preventDefault();
 
-        const scrapingReport = document.getElementById('scrapingReport');
+        const formData = new FormData(scrapeForm);
 
-        const reportExpected = document.getElementById('reportExpected');
-        const reportPages = document.getElementById('reportPages');
-        const reportSuccessful = document.getElementById('reportSuccessful');
-        const reportFailed = document.getElementById('reportFailed');
+        startButton.disabled = true;
+        startButton.textContent = 'Scraping...';
 
-        const reportInserted = document.getElementById('reportInserted');
-        const reportUpdated = document.getElementById('reportUpdated');
-        const reportUnchanged = document.getElementById('reportUnchanged');
-        const reportSaveFailed = document.getElementById('reportSaveFailed');
+        progressSection.classList.remove('d-none');
+        scrapingReport.classList.add('d-none');
 
-        const reportErrors = document.getElementById('reportErrors');
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        progressBar.classList.add('progress-bar-animated');
 
-        let pollingInterval= null;
+        progressText.textContent = 'Starting scraper...';
+        progressStatus.textContent = 'Scraping in progress...';
 
-       scrapeForm.addEventListener('submit', function(event) {
+        // Start polling
+        startPolling();
 
-            event.preventDefault();
+        // Start scraping
+        fetch('scrape.php', {
+            method: 'POST',
+            body: formData
+        })
 
-            const formData = new FormData(scrapeForm);
+        .then(async response => {
 
-            startButton.disabled = true;
-            startButton.textContent = 'Scraping...';
+            if (!response.ok) {
+                throw new Error('Failed to start scraping');
+            }
 
-            progressSection.classList.remove('d-none');
+            const result = await response.json();
 
-            progressBar.style.width = '0%';
-            progressBar.textContent = '0%';
+            if (!result.success) {
+                throw new Error(result.message || 'Scraping failed');
+            }
 
-            progressText.textContent = 'Starting scraper...';
-            progressStatus.textContent = 'Scraping in progress...';
+        })
 
-            // Start polling immediately
-            startPolling();
+        .catch(error => {
 
-            // Start scraping independently
-            fetch('scrape.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(async response => {
+            clearInterval(pollingInterval);
 
-                if (!response.ok) {
-                    throw new Error('Failed to start scraping');
-                }
+            progressStatus.textContent = 'Error';
+            progressText.textContent = error.message;
 
-                const result = await response.json();
-
-                if (!result.success) {
-                    throw new Error(result.message || 'Scraping failed');
-                }
-
-            })
-            .catch(error => {
-
-                clearInterval(pollingInterval);
-
-                progressStatus.textContent = 'Error';
-                progressText.textContent = error.message;
-
-                startButton.disabled = false;
-                startButton.textContent = 'Start Scraping';
-
-            });
+            startButton.disabled = false;
+            startButton.textContent = 'Start Scraping';
 
         });
 
-    function startPolling(){
-        if(pollingInterval!==null){
+    });
+
+
+    // Start progress polling
+    function startPolling() {
+
+        if (pollingInterval !== null) {
             clearInterval(pollingInterval);
         }
 
-        pollingInterval= setInterval(getProgress, 1000);
+        pollingInterval = setInterval(getProgress, 1000);
 
     }
 
+
+    // Get scraping progress
     async function getProgress() {
-        try{
-            const response = await fetch('scrape.php',{
-                method :'GET',
-                cache :'no-store'
+
+        try {
+
+            const response = await fetch('scrape.php', {
+                method: 'GET',
+                cache: 'no-store'
             });
-            
+
+            if (!response.ok) {
+                throw new Error('Unable to fetch scraping progress');
+            }
+
             const data = await response.json();
 
+
             if (data.status === 'error') {
+
                 clearInterval(pollingInterval);
 
                 progressStatus.textContent = 'Scraping failed';
+
                 startButton.disabled = false;
                 startButton.textContent = 'Start Scraping';
 
                 return;
+
             }
 
 
-            const total =data.totalBooksExpected ||0 ;
-            const processed= data.totalProcessed || 0;
+            const total = data.totalBooksExpected || 0;
+            const processed = data.totalProcessed || 0;
 
-            let percentage =total>0
-                ? Math.min(Math.round((processed/total)*100),100)
+            const percentage = total > 0
+                ? Math.min(Math.round((processed / total) * 100), 100)
                 : 0;
+
 
             progressBar.style.width = percentage + '%';
             progressBar.textContent = percentage + '%';
 
 
-            progressText.textContent =  `${processed} books  processed |Successful : ${data.successful || 0 } | failed:${data.failed || 0}`;
-            
+          
+
+            // Scraping completed
             if (data.status === 'completed') {
 
                 clearInterval(pollingInterval);
 
                 progressStatus.textContent = 'Scraping completed';
 
-                progressText.textContent =
-                    `Processed: ${processed} | Inserted: ${data.inserted || 0} | Updated: ${data.updated || 0} | Unchanged: ${data.unchanged || 0}`;
+               
 
                 displayReport(data);
-                
+
                 progressBar.classList.remove('progress-bar-animated');
 
                 startButton.disabled = false;
                 startButton.textContent = 'Start Scraping';
 
             }
-        }catch (error){
-            console.error("Progress error :", error);
+
+        } catch (error) {
+
+            console.error('Progress error:', error);
+
         }
 
     }
 
+
+    // Display scraping report
     function displayReport(data) {
 
-    scrapingReport.classList.remove('d-none');
+        scrapingReport.classList.remove('d-none');
 
-    reportExpected.textContent = data.totalBooksExpected ?? 0;
-    reportPages.textContent = data.pagesProcessed ?? 0;
-    reportSuccessful.textContent = data.successful ?? 0;
-    reportFailed.textContent = data.failed ?? 0;
+        reportExpected.textContent = data.totalBooksExpected ?? 0;
+        reportPages.textContent = data.pagesProcessed ?? 0;
+        reportSuccessful.textContent = data.successful ?? 0;
+        reportFailed.textContent = data.failed ?? 0;
 
-    reportInserted.textContent = data.inserted ?? 0;
-    reportUpdated.textContent = data.updated ?? 0;
-    reportUnchanged.textContent = data.unchanged ?? 0;
-    reportSaveFailed.textContent = data.saveFailed ?? 0;
+        reportInserted.textContent = data.inserted ?? 0;
+        reportUpdated.textContent = data.updated ?? 0;
+        reportUnchanged.textContent = data.unchanged ?? 0;
+        reportSaveFailed.textContent = data.saveFailed ?? 0;
 
-    reportErrors.innerHTML = '';
 
-    if (data.errors && data.errors.length > 0) {
+        reportErrors.innerHTML = '';
 
-        data.errors.forEach(error => {
+        if (data.errors && data.errors.length > 0) {
 
-            const errorItem = document.createElement('p');
+            data.errors.forEach(error => {
 
-            errorItem.textContent =
-                `${error.title}: ${error.message}`;
+                const errorItem = document.createElement('p');
 
-            reportErrors.appendChild(errorItem);
+                errorItem.textContent =
+                    `${error.title}: ${error.message}`;
 
-        });
+                reportErrors.appendChild(errorItem);
 
-    } else {
+            });
 
-        reportErrors.textContent = 'No errors.';
+        } else {
+
+            reportErrors.textContent = 'No errors.';
+
+        }
 
     }
 
-}
-        
+
+    // Calculate expected books
+    pagesInput.addEventListener('input', function() {
+
+        const pages = parseInt(this.value) || 0;
+
+        expectedBooks.textContent = pages * 20;
+
+    });
 
 
+    // Disable page input when scraping all pages
+    scrapeAllCheckbox.addEventListener('change', function() {
+
+        pagesInput.disabled = this.checked;
+
+        if (this.checked) {
+
+            expectedBooks.textContent = 'All available books';
+
+        } else {
+
+            expectedBooks.textContent =
+                (parseInt(pagesInput.value) || 0) * 20;
+
+        }
+
+    });
+
+</script>
 
 
+<?php
 
+$content = ob_get_clean();
 
-        // Calculate expected books
-        pagesInput.addEventListener('input', function () {
-
-            const pages = parseInt(this.value) || 0;
-
-            expectedBooks.textContent = pages * 20;
-
-        });
-
-
-        // Disable page input when scraping all pages
-        scrapeAllCheckbox.addEventListener('change', function () {
-
-            pagesInput.disabled = this.checked;
-
-            if (this.checked) {
-                expectedBooks.textContent = 'All available books';
-            } else {
-                expectedBooks.textContent =
-                    (parseInt(pagesInput.value) || 0) * 20;
-            }
-
-        });
-
-
-        
-
-    </script>
-
-
-</body>
-</html>
+require_once __DIR__ . '/templates/baseLayout.php';
+?>

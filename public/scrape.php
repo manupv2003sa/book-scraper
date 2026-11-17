@@ -10,6 +10,7 @@ use App\Repositories\CategoryRepository;
 use App\Scrapers\Scraper;
 
 require_once __DIR__ . '/../bootstrap.php';
+set_time_limit(900); // 15 minutes
 
 $baseUrl = 'https://books.toscrape.com/';
 
