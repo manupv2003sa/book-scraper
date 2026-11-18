@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 use App\Repositories\BookRepository;
 use App\Database\DatabaseConnection;
@@ -14,20 +14,20 @@ require_once __DIR__ . '/../bootstrap.php';
 
 $baseUrl = 'https://books.toscrape.com/';
 
- $db = new DatabaseConnection(
-        $_ENV['DB_HOST'],
-        $_ENV['DB_PORT'],
-        $_ENV['DB_DATABASE'],
-        $_ENV['DB_USERNAME'],
-        $_ENV['DB_PASSWORD']
-    );
-$pdo=  $db->getConnection();
+$db = new DatabaseConnection(
+    $_ENV['DB_HOST'],
+    $_ENV['DB_PORT'],
+    $_ENV['DB_DATABASE'],
+    $_ENV['DB_USERNAME'],
+    $_ENV['DB_PASSWORD']
+);
+$pdo =  $db->getConnection();
 
-$httpClient= new HttpClient();
+$httpClient = new HttpClient();
 $urlResolver = new UrlResolver($baseUrl);
 $bookParser = new BookParser();
 
-$categoryRepository= new CategoryRepository($pdo);
+$categoryRepository = new CategoryRepository($pdo);
 $bookrepository = new BookRepository($pdo);
 
 $scraper = new Scraper(
@@ -60,8 +60,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ]);
         exit;
     }
+    $content = file_get_contents($progressFile);
 
-    echo file_get_contents($progressFile);
+    if ($content === false) {
+        http_response_code(500);
+
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Unable to read scraping progress file'
+        ]);
+
+        exit;
+    }
+
+    echo $content;
     exit;
 }
 
@@ -70,25 +82,41 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit('Method Not Allowed');
 }
 
-$pages= filter_input(INPUT_POST, 'pages', FILTER_VALIDATE_INT);
+$scrapeAll = isset($_POST['scrape_all']) && $_POST['scrape_all'] === '1';
 
-if($pages<1 || !$pages){
-    exit('Invalid page count');
+if ($scrapeAll) {
+    $pages = null;
+} else {
+    $pages = filter_input(INPUT_POST, 'pages', FILTER_VALIDATE_INT);
+
+
+    if ($pages < 1 || !$pages) {
+        http_response_code(400);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid page count'
+        ]);
+
+        exit;
+    }
 }
 
-  $stopFile = dirname(__DIR__) . '/storage/stop-request.txt';
 
-    if (file_exists($stopFile)) {
-        unlink($stopFile);
-    }
+$totalBooksExpected = $pages !== null ? $pages * 20 : 0;
+$stopFile = dirname(__DIR__) . '/storage/stop-request.txt';
 
-$scraper->setProgressCallback(function (array $stats) use ($progressFile, $pages) {
+if (file_exists($stopFile)) {
+    unlink($stopFile);
+}
 
-  
+$scraper->setProgressCallback(function (array $stats) use ($progressFile, $totalBooksExpected) {
+
+
 
     $progress = array_merge([
         'status' => 'running',
-        'totalBooksExpected' => $pages * 20,
+        'totalBooksExpected' => $totalBooksExpected,
     ], $stats);
 
     file_put_contents(
@@ -96,7 +124,6 @@ $scraper->setProgressCallback(function (array $stats) use ($progressFile, $pages
         json_encode($progress, JSON_PRETTY_PRINT),
         LOCK_EX
     );
-
 });
 
 
@@ -106,7 +133,7 @@ file_put_contents(
     $progressFile,
     json_encode([
         'status' => 'running',
-        'totalBooksExpected' => $pages * 20,
+        'totalBooksExpected' => $totalBooksExpected,
         'totalProcessed' => 0,
         'successful' => 0,
         'failed' => 0,
@@ -122,7 +149,7 @@ file_put_contents(
 
 $scrapedBooks = $scraper->scrape($pages);
 
-$stats= $scraper->getStats();
+$stats = $scraper->getStats();
 $totalProcessed = $stats['totalProcessed'];
 $successful = $stats['successful'];
 $failed = $stats['failed'];
@@ -146,15 +173,14 @@ foreach ($scrapedBooks as $book) {
         } elseif ($result === 'unchanged') {
             $unchanged++;
         }
-
     } catch (Throwable $e) {
         $saveFailed++;
     }
 }
 
 $report = [
-    'status' => $stats['stopped'] ? 'stopped' : 'completed',    
-    'totalBooksExpected' => $pages * 20,
+    'status' => $stats['stopped'] ? 'stopped' : 'completed',
+    'totalBooksExpected' => $totalBooksExpected,
     'totalProcessed' => $totalProcessed,
     'successful' => $successful,
     'failed' => $failed,
@@ -189,4 +215,3 @@ echo json_encode([
 ]);
 
 exit;
-?>

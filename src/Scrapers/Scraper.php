@@ -24,7 +24,7 @@ class Scraper
     private int $pagesProcessed = 0;
 
     private string $stopFile;
-    private bool $stopped=false;    
+    private bool $stopped = false;
 
     private ?Closure $progressCallback = null;
 
@@ -38,16 +38,17 @@ class Scraper
         $this->bookParser = $bookParser;
         $this->urlResolver = $urlResolver;
         $this->categoryRepository = $categoryRepository;
-        $this->stopFile = dirname(__DIR__, 2) . '/storage/stop-request.txt';    }
+        $this->stopFile = dirname(__DIR__, 2) . '/storage/stop-request.txt';
+    }
 
     private function isStopRequested(): bool
     {
         return file_exists($this->stopFile);
     }
 
-    public function scrape(int $maxPages = 1): array
+    public function scrape(?int $maxPages = 1): array
     {
-        if ($maxPages < 1) {
+        if ($maxPages !== null && $maxPages < 1) {
             throw new \InvalidArgumentException(
                 'Maximum pages must be at least 1.'
             );
@@ -58,7 +59,7 @@ class Scraper
         $this->failed = 0;
         $this->errors = [];
         $this->pagesProcessed = 0;
-        $this->stopped=false;
+        $this->stopped = false;
 
         $allBooks = [];
         $currentUrl = 'https://books.toscrape.com/';
@@ -66,12 +67,14 @@ class Scraper
         // Catalogue pagination
         while (
             $currentUrl !== null &&
-            $this->pagesProcessed < $maxPages
+            ($maxPages === null || $this->pagesProcessed < $maxPages)
         ) {
             if ($this->isStopRequested()) {
                 $this->stopped = true;
                 break;
             }
+
+            $this->delayBetweenRequests();
 
             // 1. Fetch catalogue page
             $response = $this->httpClient->get($currentUrl);
@@ -97,10 +100,10 @@ class Scraper
                     $this->stopped = true;
                     break; // Exit both loops
                 }
-                
+
                 $this->totalProcessed++;
 
-                try{
+                try {
 
                     // Resolve product URL
                     $productUrl = $book->productUrl !== null
@@ -115,6 +118,9 @@ class Scraper
                     }
 
 
+                    $this->delayBetweenRequests();
+
+                    
 
                     // Fetch individual product page
                     $detailResponse = $this->httpClient->get($productUrl);
@@ -129,7 +135,7 @@ class Scraper
                     // Parse individual product details
                     $bookDetails = $this->bookParser->parseDetails($detailHtml);
 
-              
+
 
                     // Resolve image URL
                     $imageUrl = $book->imageUrl !== null
@@ -157,13 +163,13 @@ class Scraper
                         : null;
 
                     // Validate required fields
-                   if (
+                    if (
                         $bookDetails->upc === null ||
                         trim($bookDetails->upc) === '' ||
                         trim($book->title) === '' ||
                         $price === null ||
                         $price === '' ||
-                        !is_numeric($price) ||(float) $price <= 0 || 
+                        !is_numeric($price) || (float) $price <= 0 ||
                         $productUrl === ''
                     ) {
                         throw new \RuntimeException(
@@ -199,15 +205,13 @@ class Scraper
                     // Collect complete Book object
                     $allBooks[] = $completeBook;
                     $this->successful++;
-                }catch(\RuntimeException $e)
-                {
+                } catch (\RuntimeException $e) {
                     $this->failed++;
                     $this->errors[] = [
                         'title' => $book->title,
                         'message' => $e->getMessage(),
                     ];
                     continue;
-
                 }
                 $this->publishProgress();
             }
@@ -216,7 +220,7 @@ class Scraper
                 break;
             }
 
-   
+
 
             // 6. Extract next-page relative URL
             $nextPageUrl = $this->bookParser->getNextPageUrl($html);
@@ -233,8 +237,9 @@ class Scraper
         return $allBooks;
     }
 
-    public  function setProgressCallback(Closure $callback): void{
-        $this->progressCallback=$callback;
+    public  function setProgressCallback(Closure $callback): void
+    {
+        $this->progressCallback = $callback;
     }
 
     private function publishProgress(): void
@@ -252,8 +257,14 @@ class Scraper
             'successful' => $this->successful,
             'failed' => $this->failed,
             'errors' => $this->errors,
-            'pagesProcessed' =>$this->pagesProcessed ,
-            'stopped'=>$this->stopped,
+            'pagesProcessed' => $this->pagesProcessed,
+            'stopped' => $this->stopped,
         ];
+    }
+
+
+    private function delayBetweenRequests(): void
+    {
+        usleep(1000000); // 500 milliseconds
     }
 }

@@ -595,14 +595,9 @@ ob_start();
         pagesInput.disabled = this.checked;
 
         if (this.checked) {
-
-            expectedBooks.textContent = 'All available books';
-
+            pagesInput.removeAttribute('required');
         } else {
-
-            expectedBooks.textContent =
-                (parseInt(pagesInput.value) || 0) * 20;
-
+            pagesInput.setAttribute('required', '');
         }
 
     });
