@@ -1,4 +1,3 @@
-
 <?php
 
 use App\Database\DatabaseConnection;
@@ -49,7 +48,7 @@ ob_start();
 
             <!-- Total Books Card -->
             <div class="card shadow-sm border-0" style="min-height: 235px;">
-                <div class="card-body p-4" style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <div class="card-body p-4">
 
                     <h6 class="text-muted">Total Books Stored</h6>
 
@@ -75,9 +74,7 @@ ob_start();
 
                 <div class="card-body p-4">
 
-                    <h4 class="mb-3" style="padding: 20px;">
-                        Start Scraping
-                    </h4>
+                    <h4 class="mb-3">Start Scraping</h4>
 
                     <p class="text-muted">
                         Select the number of catalogue pages you want to scrape.
@@ -99,8 +96,7 @@ ob_start();
                                 name="pages"
                                 min="1"
                                 value="5"
-                                required
-                            >
+                                required>
 
                             <div class="form-text">
                                 Expected books:
@@ -118,27 +114,38 @@ ob_start();
                                 class="form-check-input"
                                 id="scrape_all"
                                 name="scrape_all"
-                                value="1"
-                            >
+                                value="1">
 
                             <label
                                 class="form-check-label"
-                                for="scrape_all"
-                            >
+                                for="scrape_all">
                                 Scrape all available pages
                             </label>
 
                         </div>
 
 
-                        <!-- Submit Button -->
-                        <button
-                            type="submit"
-                            class="btn btn-primary w-100"
-                            id="startButton"
-                        >
-                            Start Scraping
-                        </button>
+
+                        <div class="d-flex gap-2">
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary flex-grow-1"
+                                id="startButton">
+                                <i class="bi bi-play-circle"></i>
+                                Start Scraping
+                            </button>
+
+                            <button
+                                type="button"
+                                class="btn btn-danger flex-grow-1"
+                                id="stopButton"
+                                disabled>
+                                <i class="bi bi-stop-circle"></i>
+                                Stop Scraping
+                            </button>
+
+                        </div>
 
                     </form>
 
@@ -155,8 +162,7 @@ ob_start();
                             <div
                                 id="progressBar"
                                 class="progress-bar progress-bar-striped progress-bar-animated"
-                                style="width: 0%"
-                            >
+                                style="width: 0%">
                                 0%
                             </div>
 
@@ -180,104 +186,102 @@ ob_start();
 
 
 
-    <!-- Scraping Report -->
-    <div class="row">
+<!-- Scraping Report -->
+<div class="row">
 
-        <div class="col-12">
+    <div class="col-12">
 
-            <div id="scrapingReport" class="card shadow-sm border-0 mt-4 d-none">
+        <div id="scrapingReport" class="card shadow-sm border-0 mt-4 d-none">
 
-                <div class="card-body p-4" style="flex-direction: column; justify-content: center; align-items: center;">
+            <div class="card-body p-4">
 
-                    <h5 class="mb-4">Scraping Report</h5>
-
-
-                    <!-- Scraping Statistics -->
-                    <div class="row g-3">
-
-                        <div class="col-md-3">
-
-                            <h6 class="text-muted">Expected Books</h6>
-
-                            <h4 id="reportExpected">0</h4>
-
-                        </div>
+                <h5 class="mb-4">Scraping Report</h5>
 
 
-                        <div class="col-md-3">
+                <!-- Scraping Statistics -->
+                <div class="row g-3">
 
-                            <h6 class="text-muted">Pages Processed</h6>
+                    <div class="col-md-3">
 
-                            <h4 id="reportPages">0</h4>
+                        <h6 class="text-muted">Expected Books</h6>
 
-                        </div>
-
-
-                        <div class="col-md-3">
-
-                            <h6 class="text-muted">Successfully Scraped</h6>
-
-                            <h4 class="text-success" id="reportSuccessful">
-                                0
-                            </h4>
-
-                        </div>
-
-
-                        <div class="col-md-3">
-
-                            <h6 class="text-muted">Failed</h6>
-
-                            <h4 class="text-danger" id="reportFailed">
-                                0
-                            </h4>
-
-                        </div>
+                        <h4 id="reportExpected">0</h4>
 
                     </div>
 
 
-                    <hr class="my-4">
+                    <div class="col-md-3">
 
+                        <h6 class="text-muted">Pages Processed</h6>
 
-                    <!-- Database Saving Report -->
-                    <h6 class="mb-3">Database Saving Report</h6>
-
-                    <div class="row g-3">
-
-                        <div class="col-md-3">
-                            <p class="mb-1 text-muted">Inserted</p>
-                            <h5 id="reportInserted">0</h5>
-                        </div>
-
-                        <div class="col-md-3">
-                            <p class="mb-1 text-muted">Updated</p>
-                            <h5 id="reportUpdated">0</h5>
-                        </div>
-
-                        <div class="col-md-3">
-                            <p class="mb-1 text-muted">Unchanged</p>
-                            <h5 id="reportUnchanged">0</h5>
-                        </div>
-
-                        <div class="col-md-3">
-                            <p class="mb-1 text-muted">Save Failed</p>
-                            <h5 class="text-danger" id="reportSaveFailed">0</h5>
-                        </div>
+                        <h4 id="reportPages">0</h4>
 
                     </div>
 
 
-                    <hr class="my-4">
+                    <div class="col-md-3">
 
+                        <h6 class="text-muted">Successfully Scraped</h6>
 
-                    <!-- Scraping Errors -->
-                    <h6 class="mb-3">Scraping Errors</h6>
+                        <h4 class="text-success" id="reportSuccessful">
+                            0
+                        </h4>
 
-                    <div id="reportErrors">
-                        No errors.
                     </div>
 
+
+                    <div class="col-md-3">
+
+                        <h6 class="text-muted">Failed</h6>
+
+                        <h4 class="text-danger" id="reportFailed">
+                            0
+                        </h4>
+
+                    </div>
+
+                </div>
+
+
+                <hr class="my-4">
+
+
+                <!-- Database Saving Report -->
+                <h6 class="mb-3">Database Saving Report</h6>
+
+                <div class="row g-3">
+
+                    <div class="col-md-3">
+                        <p class="mb-1 text-muted">Inserted</p>
+                        <h5 id="reportInserted">0</h5>
+                    </div>
+
+                    <div class="col-md-3">
+                        <p class="mb-1 text-muted">Updated</p>
+                        <h5 id="reportUpdated">0</h5>
+                    </div>
+
+                    <div class="col-md-3">
+                        <p class="mb-1 text-muted">Unchanged</p>
+                        <h5 id="reportUnchanged">0</h5>
+                    </div>
+
+                    <div class="col-md-3">
+                        <p class="mb-1 text-muted">Save Failed</p>
+                        <h5 class="text-danger" id="reportSaveFailed">0</h5>
+                    </div>
+
+                </div>
+
+
+                <hr class="my-4">
+
+
+                <!-- Scraping Errors -->
+                <h6 class="mb-3">Scraping Errors</h6>
+
+                <div id="reportErrors">
+                    No errors.
                 </div>
 
             </div>
@@ -288,10 +292,11 @@ ob_start();
 
 </div>
 
+</div>
+
 
 <!-- Page JavaScript -->
 <script>
-
     const pagesInput = document.getElementById('pages');
     const scrapeAllCheckbox = document.getElementById('scrape_all');
     const expectedBooks = document.getElementById('expectedBooks');
@@ -318,6 +323,8 @@ ob_start();
 
     const reportErrors = document.getElementById('reportErrors');
 
+    const stopButton = document.getElementById('stopButton');
+
     let pollingInterval = null;
 
 
@@ -330,6 +337,10 @@ ob_start();
 
         startButton.disabled = true;
         startButton.textContent = 'Scraping...';
+
+         stopButton.disabled = false;
+         stopButton.innerHTML = '<i class="bi bi-stop-circle"></i> Stop Scraping';
+
 
         progressSection.classList.remove('d-none');
         scrapingReport.classList.add('d-none');
@@ -346,37 +357,70 @@ ob_start();
 
         // Start scraping
         fetch('scrape.php', {
-            method: 'POST',
-            body: formData
-        })
+                method: 'POST',
+                body: formData
+            })
 
-        .then(async response => {
+            .then(async response => {
 
-            if (!response.ok) {
-                throw new Error('Failed to start scraping');
-            }
+                if (!response.ok) {
+                    throw new Error('Failed to start scraping');
+                }
 
-            const result = await response.json();
+                const result = await response.json();
 
-            if (!result.success) {
-                throw new Error(result.message || 'Scraping failed');
-            }
+                if (!result.success) {
+                    throw new Error(result.message || 'Scraping failed');
+                }
 
-        })
+            })
 
-        .catch(error => {
+            .catch(error => {
 
-            clearInterval(pollingInterval);
+                clearInterval(pollingInterval);
 
-            progressStatus.textContent = 'Error';
-            progressText.textContent = error.message;
+                progressStatus.textContent = 'Error';
+                progressText.textContent = error.message;
 
-            startButton.disabled = false;
-            startButton.textContent = 'Start Scraping';
+                startButton.disabled = false;
+                startButton.textContent = 'Start Scraping';
 
-        });
+                stopButton.disabled = true;
+                stopButton.textContent = 'Stop Scraping';
+
+            });
 
     });
+
+    stopButton.addEventListener('click', async function () {
+        const confirmed = confirm('Are you sure you want to stop scraping?');
+
+        if(!confirmed) return;
+
+        stopButton.disabled=true;
+        stopButton.innerHTML= 'Stopping...';
+
+        try{
+            const response =await fetch ('stop-scraping.php',{
+                method : 'POST'
+            });
+
+            const result =await response.json();
+
+            if(!response.ok || !result.success){
+                throw new Error (result.message || 'Unable to stop scraping');
+            }
+
+            progressStatus.textContent = ' Stop requested';
+            progressText.textContent = 'Waiting for scraper to stop...';
+        }catch (error){
+            alert(error.message);
+
+            stopButton.disabled=false;
+            stopButton.innerHTML = '<i class="bi bi-stop-circle"></i> Stop Scraping';
+
+        }
+    })
 
 
     // Start progress polling
@@ -417,24 +461,53 @@ ob_start();
                 startButton.disabled = false;
                 startButton.textContent = 'Start Scraping';
 
-                return;
+                stopButton.disabled = true;
+                stopButton.textContent = 'Stop Scraping';
 
+                progressBar.classList.remove('progress-bar-animated');
+
+                return;
             }
 
 
             const total = data.totalBooksExpected || 0;
             const processed = data.totalProcessed || 0;
 
-            const percentage = total > 0
-                ? Math.min(Math.round((processed / total) * 100), 100)
-                : 0;
+            const percentage = total > 0 ?
+                Math.min(Math.round((processed / total) * 100), 100) :
+                0;
 
 
             progressBar.style.width = percentage + '%';
             progressBar.textContent = percentage + '%';
 
 
-          
+            progressText.textContent =
+                `${processed} books processed | Successful: ${data.successful || 0} | Failed: ${data.failed || 0}`;
+
+
+            // Scraping stopped by user
+            if (data.status === 'stopped') {
+
+                clearInterval(pollingInterval);
+
+                progressStatus.textContent = 'Scraping stopped';
+
+                progressText.textContent =
+                   'Scraping stopped by user.';
+
+                displayReport(data);
+
+                progressBar.classList.remove('progress-bar-animated');
+
+                startButton.disabled = false;
+                startButton.textContent = 'Start Scraping';
+
+                stopButton.disabled = true;
+                stopButton.textContent = 'Stop Scraping';
+
+                return;
+            }
 
             // Scraping completed
             if (data.status === 'completed') {
@@ -443,7 +516,7 @@ ob_start();
 
                 progressStatus.textContent = 'Scraping completed';
 
-               
+                progressText.textContent = 'Scraping completed successfully.';
 
                 displayReport(data);
 
@@ -451,6 +524,9 @@ ob_start();
 
                 startButton.disabled = false;
                 startButton.textContent = 'Start Scraping';
+
+            stopButton.disabled = true;
+            stopButton.textContent = 'Stop Scraping';
 
             }
 
@@ -530,7 +606,6 @@ ob_start();
         }
 
     });
-
 </script>
 
 

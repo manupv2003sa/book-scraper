@@ -23,6 +23,9 @@ class Scraper
     private array $errors = [];
     private int $pagesProcessed = 0;
 
+    private string $stopFile;
+    private bool $stopped=false;    
+
     private ?Closure $progressCallback = null;
 
     public function __construct(
@@ -35,6 +38,11 @@ class Scraper
         $this->bookParser = $bookParser;
         $this->urlResolver = $urlResolver;
         $this->categoryRepository = $categoryRepository;
+        $this->stopFile = dirname(__DIR__, 2) . '/storage/stop-request.txt';    }
+
+    private function isStopRequested(): bool
+    {
+        return file_exists($this->stopFile);
     }
 
     public function scrape(int $maxPages = 1): array
@@ -50,6 +58,7 @@ class Scraper
         $this->failed = 0;
         $this->errors = [];
         $this->pagesProcessed = 0;
+        $this->stopped=false;
 
         $allBooks = [];
         $currentUrl = 'https://books.toscrape.com/';
@@ -59,9 +68,19 @@ class Scraper
             $currentUrl !== null &&
             $this->pagesProcessed < $maxPages
         ) {
+            if ($this->isStopRequested()) {
+                $this->stopped = true;
+                break;
+            }
 
             // 1. Fetch catalogue page
             $response = $this->httpClient->get($currentUrl);
+
+            if ($this->isStopRequested()) {
+                $this->stopped = true;
+                break;
+            }
+
 
             // 2. Extract HTML
             $html = $response->getBody();
@@ -73,6 +92,11 @@ class Scraper
 
             // 4. Process each individual book
             foreach ($books as $book) {
+
+                if ($this->isStopRequested()) {
+                    $this->stopped = true;
+                    break; // Exit both loops
+                }
                 
                 $this->totalProcessed++;
 
@@ -94,6 +118,11 @@ class Scraper
 
                     // Fetch individual product page
                     $detailResponse = $this->httpClient->get($productUrl);
+
+                    if ($this->isStopRequested()) {
+                        $this->stopped = true;
+                        break;
+                    }
 
                     $detailHtml = $detailResponse->getBody();
 
@@ -183,6 +212,10 @@ class Scraper
                 $this->publishProgress();
             }
 
+            if ($this->stopped) {
+                break;
+            }
+
    
 
             // 6. Extract next-page relative URL
@@ -220,6 +253,7 @@ class Scraper
             'failed' => $this->failed,
             'errors' => $this->errors,
             'pagesProcessed' =>$this->pagesProcessed ,
+            'stopped'=>$this->stopped,
         ];
     }
 }

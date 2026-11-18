@@ -10,7 +10,7 @@ use App\Repositories\CategoryRepository;
 use App\Scrapers\Scraper;
 
 require_once __DIR__ . '/../bootstrap.php';
-set_time_limit(900); // 15 minutes
+
 
 $baseUrl = 'https://books.toscrape.com/';
 
@@ -76,7 +76,15 @@ if($pages<1 || !$pages){
     exit('Invalid page count');
 }
 
+  $stopFile = dirname(__DIR__) . '/storage/stop-request.txt';
+
+    if (file_exists($stopFile)) {
+        unlink($stopFile);
+    }
+
 $scraper->setProgressCallback(function (array $stats) use ($progressFile, $pages) {
+
+  
 
     $progress = array_merge([
         'status' => 'running',
@@ -145,7 +153,7 @@ foreach ($scrapedBooks as $book) {
 }
 
 $report = [
-    'status' => 'completed',
+    'status' => $stats['stopped'] ? 'stopped' : 'completed',    
     'totalBooksExpected' => $pages * 20,
     'totalProcessed' => $totalProcessed,
     'successful' => $successful,
@@ -159,18 +167,25 @@ $report = [
 ];
 
 
-
 file_put_contents(
     $progressFile,
     json_encode($report, JSON_PRETTY_PRINT),
     LOCK_EX
 );
 
+if (file_exists($stopFile)) {
+    unlink($stopFile);
+}
+
+
 header('Content-Type: application/json');
 
 echo json_encode([
     'success' => true,
-    'message' => 'Scraping completed'
+    'status' => $report['status'],
+    'message' => $report['status'] === 'stopped'
+        ? 'Scraping stopped successfully'
+        : 'Scraping completed'
 ]);
 
 exit;

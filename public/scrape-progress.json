@@ -1,13 +1,13 @@
 {
-    "status": "completed",
-    "totalBooksExpected": 280,
-    "totalProcessed": 280,
-    "successful": 280,
+    "status": "stopped",
+    "totalBooksExpected": 100,
+    "totalProcessed": 10,
+    "successful": 9,
     "failed": 0,
-    "pagesProcessed": 14,
+    "pagesProcessed": 1,
     "inserted": 0,
     "updated": 0,
-    "unchanged": 280,
+    "unchanged": 9,
     "saveFailed": 0,
     "errors": []
 }
