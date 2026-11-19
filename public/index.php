@@ -100,7 +100,7 @@ ob_start();
 
                             <div class="form-text">
                                 Expected books:
-                                <strong id="expectedBooks">100</strong>
+                                <strong id="expectedBooks"></strong>
                             </div>
 
                         </div>
@@ -578,15 +578,16 @@ ob_start();
 
     }
 
+    function updateExpected(){
+        const pages = parseInt(pagesInput.value) || 0;
+
+        expectedBooks.textContent = pages * 20;    
+    }
+
 
     // Calculate expected books
-    pagesInput.addEventListener('input', function() {
-
-        const pages = parseInt(this.value) || 0;
-
-        expectedBooks.textContent = pages * 20;
-
-    });
+    pagesInput.addEventListener('input', updateExpected); 
+    updateExpected();
 
 
     // Disable page input when scraping all pages

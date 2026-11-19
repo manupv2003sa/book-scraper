@@ -2,43 +2,57 @@
 
 namespace App\Scrapers;
 
+use App\Logging\LoggerInterface;
 use App\Http\HttpClient;
 use App\Parsers\BookParser;
 use App\Support\UrlResolver;
 use App\Repositories\CategoryRepository;
+use App\Repositories\BookRepository;
+
 use App\Models\Book;
 use Closure;
 
 class Scraper
 {
+    private LoggerInterface $logger;
     private HttpClient $httpClient;
     private BookParser $bookParser;
     private UrlResolver $urlResolver;
     private CategoryRepository $categoryRepository;
-
+    private BookRepository $bookRepository;
 
     private int $totalProcessed = 0;
     private int $successful = 0;
     private int $failed = 0;
     private array $errors = [];
     private int $pagesProcessed = 0;
+    private int $inserted = 0;
+    private int $updated = 0;
+    private int $unchanged = 0;
+    private int $saveFailed = 0;
 
     private string $stopFile;
     private bool $stopped = false;
+    private ?string $scrapeError = null;
 
     private ?Closure $progressCallback = null;
 
     public function __construct(
+        LoggerInterface $logger,
         HttpClient $httpClient,
         BookParser $bookParser,
         UrlResolver $urlResolver,
-        CategoryRepository $categoryRepository
+        CategoryRepository $categoryRepository,
+        BookRepository $bookRepository,
     ) {
+        $this->logger = $logger;
         $this->httpClient = $httpClient;
         $this->bookParser = $bookParser;
         $this->urlResolver = $urlResolver;
         $this->categoryRepository = $categoryRepository;
+        $this->bookRepository = $bookRepository;
         $this->stopFile = dirname(__DIR__, 2) . '/storage/stop-request.txt';
+
     }
 
     private function isStopRequested(): bool
@@ -46,7 +60,7 @@ class Scraper
         return file_exists($this->stopFile);
     }
 
-    public function scrape(?int $maxPages = 1): array
+    public function scrape(?int $maxPages = 1): void
     {
         if ($maxPages !== null && $maxPages < 1) {
             throw new \InvalidArgumentException(
@@ -61,8 +75,17 @@ class Scraper
         $this->pagesProcessed = 0;
         $this->stopped = false;
 
-        $allBooks = [];
+
+        $this->inserted = 0;
+        $this->updated = 0;
+        $this->unchanged = 0;
+        $this->saveFailed = 0;
+        $this->scrapeError = null;
         $currentUrl = 'https://books.toscrape.com/';
+
+        $this->logger->info('Scraping started', [
+            'maxPages' => $maxPages
+        ]);
 
         // Catalogue pagination
         while (
@@ -73,7 +96,7 @@ class Scraper
                 $this->stopped = true;
                 break;
             }
-
+        try {
             $this->delayBetweenRequests();
 
             // 1. Fetch catalogue page
@@ -84,24 +107,47 @@ class Scraper
                 break;
             }
 
-
             // 2. Extract HTML
             $html = $response->getBody();
 
             // 3. Parse catalogue books
             $books = $this->bookParser->parseListing($html);
 
+            // 4. Extract and resolve the next page URL
+            $nextPageUrl = $this->bookParser->getNextPageUrl($html);
+
+            $resolvedNextPageUrl = $nextPageUrl !== null
+                ? $this->urlResolver->resolve($nextPageUrl, $currentUrl)
+                : null;
+
             $this->pagesProcessed++;
+            $this->logger->info('Catalogue page processed', [
+                'url' => $currentUrl,
+                'page' => $this->pagesProcessed,
+                'booksFound' => count($books)
+            ]);
+
+        } catch (\Throwable $e) {
+
+            $this->scrapeError = $e->getMessage();
+            $this->logger->error('Failed to process catalogue page', [
+                'url' => $currentUrl,
+                'error' => $e->getMessage()
+            ]);
+
+            $this->publishProgress();
+
+            break;
+        }
 
             // 4. Process each individual book
             foreach ($books as $book) {
 
                 if ($this->isStopRequested()) {
                     $this->stopped = true;
-                    break; // Exit both loops
+                    break;
                 }
 
-                $this->totalProcessed++;
 
                 try {
 
@@ -118,9 +164,10 @@ class Scraper
                     }
 
 
+
                     $this->delayBetweenRequests();
 
-                    
+
 
                     // Fetch individual product page
                     $detailResponse = $this->httpClient->get($productUrl);
@@ -203,14 +250,44 @@ class Scraper
                     );
 
                     // Collect complete Book object
-                    $allBooks[] = $completeBook;
-                    $this->successful++;
-                } catch (\RuntimeException $e) {
+
+                    try {
+                        $result = $this->bookRepository->save($completeBook);
+
+                        if ($result === 'inserted') {
+                            $this->inserted++;
+                        } elseif ($result === 'updated') {
+                            $this->updated++;
+                        } elseif ($result === 'unchanged') {
+                            $this->unchanged++;
+                        } else {
+                            throw new \RuntimeException(
+                                'Unexpected repository save result: ' . $result
+                            );
+                        }
+
+                        $this->successful++;
+                        $this->totalProcessed++;
+                    } catch (\Throwable $e) {
+                        $this->saveFailed++;
+                        throw $e;
+                    }
+                } catch (\Throwable $e) {
                     $this->failed++;
+                    $this->totalProcessed++;
+
+                    $this->logger->error('Failed to process book', [
+                        'title' => $book->title ?? 'Unknown book',
+                        'error' => $e->getMessage()
+                    ]);
+
                     $this->errors[] = [
-                        'title' => $book->title,
+                        'title' => $book->title ?? 'Unknown book',
                         'message' => $e->getMessage(),
                     ];
+
+                    $this->publishProgress();
+
                     continue;
                 }
                 $this->publishProgress();
@@ -220,21 +297,18 @@ class Scraper
                 break;
             }
 
-
-
-            // 6. Extract next-page relative URL
-            $nextPageUrl = $this->bookParser->getNextPageUrl($html);
-
-            // 7. Resolve next-page URL
-            $currentUrl = $nextPageUrl !== null
-                ? $this->urlResolver->resolve(
-                    $nextPageUrl,
-                    $currentUrl
-                )
-                : null;
+            $currentUrl = $resolvedNextPageUrl;
         }
-
-        return $allBooks;
+        $this->logger->info('Scraping finished', [
+            'pagesProcessed' => $this->pagesProcessed,
+            'totalProcessed' => $this->totalProcessed,
+            'successful' => $this->successful,
+            'failed' => $this->failed,
+            'inserted' => $this->inserted,
+            'updated' => $this->updated,
+            'unchanged' => $this->unchanged,
+            'stopped' => $this->stopped
+        ]);
     }
 
     public  function setProgressCallback(Closure $callback): void
@@ -259,12 +333,18 @@ class Scraper
             'errors' => $this->errors,
             'pagesProcessed' => $this->pagesProcessed,
             'stopped' => $this->stopped,
+
+            'inserted' => $this->inserted,
+            'updated' => $this->updated,
+            'unchanged' => $this->unchanged,
+            'saveFailed' => $this->saveFailed,
+            'scrapeError' => $this->scrapeError,
         ];
     }
 
 
     private function delayBetweenRequests(): void
     {
-        usleep(1000000); // 500 milliseconds
+        usleep(500000); // 500 milliseconds
     }
 }

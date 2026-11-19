@@ -2,6 +2,7 @@
 
 use App\Repositories\BookRepository;
 use App\Database\DatabaseConnection;
+use App\Logging\Logger;
 
 use App\Http\HttpClient;
 use App\Support\UrlResolver;
@@ -10,6 +11,8 @@ use App\Repositories\CategoryRepository;
 use App\Scrapers\Scraper;
 
 require_once __DIR__ . '/../bootstrap.php';
+$logger = new Logger(__DIR__ . '/../logs/scraper.log');
+
 
 
 $baseUrl = 'https://books.toscrape.com/';
@@ -23,7 +26,7 @@ $db = new DatabaseConnection(
 );
 $pdo =  $db->getConnection();
 
-$httpClient = new HttpClient();
+$httpClient = new HttpClient($logger);
 $urlResolver = new UrlResolver($baseUrl);
 $bookParser = new BookParser();
 
@@ -31,10 +34,12 @@ $categoryRepository = new CategoryRepository($pdo);
 $bookrepository = new BookRepository($pdo);
 
 $scraper = new Scraper(
+    $logger,
     $httpClient,
     $bookParser,
     $urlResolver,
     $categoryRepository,
+    $bookrepository,
 );
 
 $progressFile = __DIR__ . '/scrape-progress.json';
@@ -56,7 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'updated' => 0,
             'unchanged' => 0,
             'saveFailed' => 0,
-            'errors' => []
+            'errors' => [],
+            'scrapeError' => null,
         ]);
         exit;
     }
@@ -78,6 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Content-Type: application/json');
+
     http_response_code(405);
     exit('Method Not Allowed');
 }
@@ -147,71 +155,55 @@ file_put_contents(
     LOCK_EX
 );
 
-$scrapedBooks = $scraper->scrape($pages);
 
+// Execute scraping only once
+$scraper->scrape($pages);
+
+// Get final scraping statistics
 $stats = $scraper->getStats();
-$totalProcessed = $stats['totalProcessed'];
-$successful = $stats['successful'];
-$failed = $stats['failed'];
-$pagesProcessed = $stats['pagesProcessed'];
-$errors = $stats['errors'];
 
-
-$inserted = 0;
-$updated = 0;
-$unchanged = 0;
-$saveFailed = 0;
-foreach ($scrapedBooks as $book) {
-    try {
-        $result = $bookrepository->save($book);
-
-
-        if ($result === 'inserted') {
-            $inserted++;
-        } elseif ($result === 'updated') {
-            $updated++;
-        } elseif ($result === 'unchanged') {
-            $unchanged++;
-        }
-    } catch (Throwable $e) {
-        $saveFailed++;
-    }
-}
-
+// Prepare final report
 $report = [
-    'status' => $stats['stopped'] ? 'stopped' : 'completed',
+    'status' => $stats['scrapeError'] !== null
+        ? 'error'
+        : ($stats['stopped'] ? 'stopped' : 'completed'),
+
     'totalBooksExpected' => $totalBooksExpected,
-    'totalProcessed' => $totalProcessed,
-    'successful' => $successful,
-    'failed' => $failed,
-    'pagesProcessed' => $pagesProcessed,
-    'inserted' => $inserted,
-    'updated' => $updated,
-    'unchanged' => $unchanged,
-    'saveFailed' => $saveFailed,
-    'errors' => $errors
+    'totalProcessed' => $stats['totalProcessed'],
+    'successful' => $stats['successful'],
+    'failed' => $stats['failed'],
+    'pagesProcessed' => $stats['pagesProcessed'],
+
+    'inserted' => $stats['inserted'],
+    'updated' => $stats['updated'],
+    'unchanged' => $stats['unchanged'],
+    'saveFailed' => $stats['saveFailed'],
+
+    'errors' => $stats['errors'],
+    'scrapeError' => $stats['scrapeError'],
 ];
 
-
+// Save final progress
 file_put_contents(
     $progressFile,
     json_encode($report, JSON_PRETTY_PRINT),
     LOCK_EX
 );
 
+// Remove stop request file
 if (file_exists($stopFile)) {
     unlink($stopFile);
 }
 
-
-header('Content-Type: application/json');
-
+// Return final response
 echo json_encode([
-    'success' => true,
+    'success' => $report['status'] !== 'error',
     'status' => $report['status'],
-    'message' => $report['status'] === 'stopped'
-        ? 'Scraping stopped successfully'
-        : 'Scraping completed'
+    'message' => match ($report['status']) {
+        'error' => 'Scraping failed while processing a catalogue page',
+        'stopped' => 'Scraping stopped successfully',
+        default => 'Scraping completed'
+    }
 ]);
 
 exit;

@@ -48,6 +48,14 @@ if (!empty($categoryIds)) {
     $filterValue = null;
 }
 
+$queryParams = [];
+
+if ($filterType === 'category') {
+    $queryParams['category'] = $categoryIds;
+} elseif ($filterType === 'search') {
+    $queryParams['search'] = $search;
+}
+
 $limit = 20;
 
 $reqPage = filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT);
@@ -65,7 +73,8 @@ if ($totalPages === 0) {
 } else {
 
     if ($reqPage > $totalPages) {
-        header("Location: books.php?page=" . $totalPages);
+        $queryParams['page'] = $totalPages;
+        header("Location: books.php?"  . http_build_query($queryParams));
         exit;
     }
 
@@ -175,23 +184,23 @@ ob_start();
                                         class="btn btn-sm btn-dark fw-bold"
                                         data-bs-toggle="modal"
                                         data-bs-target="#categoryModal">
-                                        Category  <svg xmlns="http://www.w3.org/2000/svg"
-             width="18"
-             height="18"
-             viewBox="0 0 24 24"
-             fill="none"
-             stroke="currentColor"
-             stroke-width="2"
-             stroke-linecap="round"
-             stroke-linejoin="round"
-             style="vertical-align: middle; margin-left: 4px;">
+                                        Category <svg xmlns="http://www.w3.org/2000/svg"
+                                            width="18"
+                                            height="18"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            style="vertical-align: middle; margin-left: 4px;">
 
-            <path d="m13 13.5 2-2.5-2-2.5" />
-            <path d="m21 21-4.3-4.3" />
-            <path d="M9 8.5 7 11l2 2.5" />
-            <circle cx="11" cy="11" r="8" />
+                                            <path d="m13 13.5 2-2.5-2-2.5" />
+                                            <path d="m21 21-4.3-4.3" />
+                                            <path d="M9 8.5 7 11l2 2.5" />
+                                            <circle cx="11" cy="11" r="8" />
 
-        </svg> <i class="bi bi-funnel"></i>
+                                        </svg> <i class="bi bi-funnel"></i>
                                     </button>
                                 </th>
                                 <th>Action</th>
@@ -350,13 +359,13 @@ ob_start();
                 <script>
                     const clearButton = document.getElementById('clearCategories');
 
-                    clearButton.addEventListener('click', function () {
+                    clearButton.addEventListener('click', function() {
 
                         const checkboxes = document.querySelectorAll(
                             '#categoryFilterForm input[name="category[]"]'
                         );
 
-                        checkboxes.forEach(function (checkbox) {
+                        checkboxes.forEach(function(checkbox) {
                             checkbox.checked = false;
                         });
 
@@ -373,8 +382,15 @@ ob_start();
                             <li class="page-item <?= $reqPage <= 1 ? 'disabled' : '' ?>">
                                 <a
                                     class="page-link"
-                                    href="?page=<?= $reqPage - 1 ?>">
-                                    Previous
+                                    href="<?= htmlspecialchars(
+                                                'books.php?' . http_build_query(
+                                                    array_merge($queryParams, [
+                                                        'page' => max(1, $reqPage - 1)
+                                                    ])
+                                                ),
+                                                ENT_QUOTES,
+                                                'UTF-8'
+                                            ) ?>"> Previous
                                 </a>
                             </li>
 
@@ -383,8 +399,13 @@ ob_start();
                                 <li class="page-item <?= $reqPage === $i ? 'active' : '' ?>">
                                     <a
                                         class="page-link"
-                                        href="?page=<?= $i ?>">
-                                        <?= $i ?>
+                                        href="<?= htmlspecialchars(
+                                                    'books.php?' . http_build_query(
+                                                        array_merge($queryParams, ['page' => $i])
+                                                    ),
+                                                    ENT_QUOTES,
+                                                    'UTF-8'
+                                                ) ?>"> <?= $i ?>
                                     </a>
                                 </li>
 
@@ -393,8 +414,15 @@ ob_start();
                             <li class="page-item <?= $reqPage >= $totalPages ? 'disabled' : '' ?>">
                                 <a
                                     class="page-link"
-                                    href="?page=<?= $reqPage + 1 ?>">
-                                    Next
+                                    href="<?= htmlspecialchars(
+                                                'books.php?' . http_build_query(
+                                                    array_merge($queryParams, [
+                                                        'page' => min($totalPages, $reqPage + 1)
+                                                    ])
+                                                ),
+                                                ENT_QUOTES,
+                                                'UTF-8'
+                                            ) ?>"> Next
                                 </a>
                             </li>
 
